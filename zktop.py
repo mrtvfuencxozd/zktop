@@ -362,7 +362,7 @@ def get_zk_servers(filename):
                         for k, v in config.items() if k.startswith('server.'))
     else:
         return ','.join("%s:%s" % (s.strip(), ZK_DEFAULT_PORT) if not ':' in s else "%s" % s
-                        for s in options.servers.split(',', 1))
+                        for s in options.servers.split(','))
 
 if __name__ == '__main__':
     LOG.debug("startup")
