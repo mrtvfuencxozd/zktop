@@ -60,6 +60,9 @@ parser.add_option("-c", "--config",
 parser.add_option("-t", "--timeout",
                   dest="timeout", default=None,
                   help="connection timeout to zookeeper instance")
+parser.add_option("-V", "--versions",
+                  action="store_true", default=False,
+                  help="show servers version")
 
 (options, args) = parser.parse_args()
 
@@ -218,17 +221,19 @@ class ServerUI(BaseUI):
 
     def resize(self, maxy, maxx):
         BaseUI.resize(self, maxy, maxx)
-        self.addstr(1, 0, "ID SERVER           PORT M    OUTST    RECVD     SENT CONNS MINLAT AVGLAT MAXLAT", curses.A_REVERSE)
+        self.addstr(1, 0, "ID SERVER           PORT M    OUTST    RECVD     SENT CONNS MINLAT AVGLAT MAXLAT" +
+                    ("" if not options.versions else " VERSION"), curses.A_REVERSE)
 
     def update(self, s):
         if s.unavailable:
             self.addstr(s.server_id + 2, 0, "%-2s %-15s %5s %s" %
                         (s.server_id, s.host[:15], s.port, s.mode[:1].upper()))
         else:
-            self.addstr(s.server_id + 2, 0, "%-2s %-15s %5s %s %8s %8s %8s %5d %6s %6s %6s" %
+            self.addstr(s.server_id + 2, 0, "%-2s %-15s %5s %s %8s %8s %8s %5d %6s %6s %6s%s" %
                         (s.server_id, s.host[:15], s.port, s.mode[:1].upper(),
                          s.outstanding, s.received, s.sent, len(s.sessions),
-                         s.min_latency, s.avg_latency, s.max_latency))
+                         s.min_latency, s.avg_latency, s.max_latency,
+                         " %7s" % (s.version) if options.versions else ""))
 
 class SessionUI(BaseUI):
     def __init__(self, height, width, server_count):
