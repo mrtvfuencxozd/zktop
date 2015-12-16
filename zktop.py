@@ -16,14 +16,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 from optparse import OptionParser
 
 import curses
-import threading, Queue
 import socket
 import signal
-import re, StringIO
 import logging as LOG
+import threading
+import re
+
+import sys
+if sys.version_info[0] >= 3:
+    from io import StringIO
+    from queue import Queue
+else:
+    from StringIO import StringIO
+    from Queue import Queue
 
 ZK_DEFAULT_PORT = 2181
 
@@ -82,8 +92,7 @@ class ZKServer(object):
         self.host, self.port = server.split(':')
         try:
             stat = send_cmd(self.host, self.port, 'stat\n')
-
-            sio = StringIO.StringIO(stat)
+            sio = StringIO(stat)
             line = sio.readline()
             m = re.search('.*: (\d+\.\d+\.\d+)-.*', line)
             self.version = m.group(1)
@@ -115,7 +124,7 @@ def send_cmd(host, port, cmd):
     s.connect((host, int(port)))
     result = []
     try:
-        s.sendall(cmd)
+        s.sendall(cmd.encode('ascii'))
 
         # shutting down the socket write side helps ensure
         # that we don't end up with TIME_WAIT sockets
@@ -126,13 +135,12 @@ def send_cmd(host, port, cmd):
             data = s.recv(4096)
             if not data:
                 break
-            result.append(data)
+            result.append(data.decode('ascii'))
     finally:
         s.close()
-
     return "".join(result)
 
-q_stats = Queue.Queue()
+q_stats = Queue()
 
 p_wakeup = threading.Condition()
 
@@ -197,7 +205,7 @@ class SummaryUI(BaseUI):
         else:
             self.session_counts[s.server_id] = len(s.sessions)
             self.node_counts[s.server_id] = int(s.node_count)
-            self.zxids[s.server_id] = long(s.zxid, 16)
+            self.zxids[s.server_id] = int(s.zxid, 16)
         nc = max(self.node_counts)
         zxid = max(self.zxids)
         sc = sum(self.session_counts)
@@ -234,7 +242,7 @@ class SessionUI(BaseUI):
         items = []
         for l in self.sessions:
             items.extend(l)
-        items.sort(lambda x,y: int(y.queued)-int(x.queued))
+        items.sort(key=lambda x: int(x.queued))
         for i, session in enumerate(items):
             try:
                 #ugh, need to handle if slow - thread for async resolver?
@@ -272,7 +280,7 @@ class Main(object):
         # start the polling threads
         pollers = [StatPoller(server) for server in self.servers]
         for poller in pollers:
-            poller.setName("PollerThread:" + server)
+            poller.setName("PollerThread:" + poller.server)
             poller.setDaemon(True)
             poller.start()
 
@@ -349,7 +357,7 @@ def read_zk_config(filename):
                 k,v = tuple(line.replace(' ', '').strip().split('=', 1))
                 config[k] = v
     except IOError as e:
-        print "Unable to open `{0}': I/O error({1}): {2}".format(filename, e.errno, e.strerror)
+        print("Unable to open `{0}': I/O error({1}): {2}".format(filename, e.errno, e.strerror))
     finally:
         f.close()
         return config
