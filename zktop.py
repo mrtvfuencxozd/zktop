@@ -242,7 +242,7 @@ class SessionUI(BaseUI):
         items = []
         for l in self.sessions:
             items.extend(l)
-        items.sort(key=lambda x: int(x.queued))
+        items.sort(key=lambda x: int(x.queued), reverse=True)
         for i, session in enumerate(items):
             try:
                 #ugh, need to handle if slow - thread for async resolver?
